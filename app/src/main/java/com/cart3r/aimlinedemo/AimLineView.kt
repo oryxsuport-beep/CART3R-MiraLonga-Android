@@ -65,6 +65,39 @@ class AimLineView(context: Context):View(context) {
         invalidate()
         return radiusDp()
     }
+    /** Table coordinates and radius used to align capture to this overlay. */
+    fun captureTable():TableBounds=table
+    fun captureRadius():Float=radius
+    fun applyAutoDetected(detected:List<VisionBall>):Int {
+        if(detected.isEmpty())return 0
+        val cue=detected.maxByOrNull{it.cueScore}
+            ?.takeIf{it.cueScore>=0.65f}
+        if(cue!=null){
+            white.set(cue.center.x,cue.center.y)
+        }
+        val objects=detected.filter{it!==cue}
+        if(objects.isEmpty()){invalidate();return detected.size}
+        val nearest=objects.minByOrNull{
+            kotlin.math.hypot(it.center.x-targetBall.x,it.center.y-targetBall.y)
+        } ?:return detected.size
+        // Keep the previously selected target if no nearby detection is reliable.
+        if(targetEnabled&&kotlin.math.hypot(
+                nearest.center.x-targetBall.x,nearest.center.y-targetBall.y
+            )<=radius*4f) {
+            targetBall.set(nearest.center.x,nearest.center.y)
+        } else if(!targetEnabled) {
+            targetEnabled=true
+            targetBall.set(nearest.center.x,nearest.center.y)
+        }
+        extras.clear()
+        val keepTarget=if(targetEnabled)nearest else null
+        for(item in objects) {
+            if(item!==keepTarget&&extras.size<15)
+                extras.add(PointF(item.center.x,item.center.y))
+        }
+        invalidate()
+        return detected.size
+    }
     fun obstacleCount():Int=extras.size
     fun addObstacle():Boolean {
         if(extras.size>=7)return false
