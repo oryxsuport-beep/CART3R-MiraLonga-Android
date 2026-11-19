@@ -12,8 +12,8 @@ data class TableBounds(val left: Float, val top: Float, val right: Float, val bo
 
 /** Ideal point-ray reflections. Not a simulation of balls, force, spin, or pockets. */
 object BounceGeometry {
-    fun trace(origin: AimPoint, towards: AimPoint, bounds: TableBounds, rebounds: Int): List<AimPoint> {
-        if (!bounds.contains(origin) || rebounds !in 0..8) return emptyList()
+    fun trace(origin: AimPoint, towards: AimPoint, bounds: TableBounds, rebounds: Int, normalRestitution: Float = 1f): List<AimPoint> {
+        if (!bounds.contains(origin) || rebounds !in 0..8 || normalRestitution !in 0.1f..1f) return emptyList()
         var vx = towards.x - origin.x
         var vy = towards.y - origin.y
         val len = hypot(vx, vy)
@@ -41,8 +41,8 @@ object BounceGeometry {
             )
             path.add(hit)
             if (step == rebounds) return path
-            if (abs(t - tx) < 0.01f) vx = -vx
-            if (abs(t - ty) < 0.01f) vy = -vy
+            if (abs(t - tx) < 0.01f) vx = -vx * normalRestitution
+            if (abs(t - ty) < 0.01f) vy = -vy * normalRestitution
             position = hit
         }
         return path
