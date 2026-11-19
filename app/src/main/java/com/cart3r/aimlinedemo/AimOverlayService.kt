@@ -162,12 +162,16 @@ class AimOverlayService:Service() {
             selectMode(AimLineView.Mode.BALL)
         }
         extraButton.setOnClickListener{
-            if(line.addObstacle())selectMode(AimLineView.Mode.EXTRA)
+            if(line.addObstacle()) {
+                if(mode==AimLineView.Mode.EXTRA) refreshMarkers()
+                else selectMode(AimLineView.Mode.EXTRA)
+            }
             else extraButton.text="✚  Limite: 7 bolas extras"
         }
         remove.setOnClickListener {
             line.removeObstacle()
             if(line.obstacleCount()==0)selectMode(AimLineView.Mode.LOCKED)
+            else if(mode==AimLineView.Mode.EXTRA)refreshMarkers()
             else selectMode(AimLineView.Mode.EXTRA)
         }
         hideTarget.setOnClickListener{
