@@ -2,6 +2,8 @@ package com.cart3r.aimlinedemo
 
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sign
 import kotlin.math.sqrt
 
 /** Manual approximation of elastic billiard-ball contacts, including cushion paths. */
@@ -17,6 +19,11 @@ data class CollisionPreview(
 )
 
 object MultiBallPredictor {
+    // Initial estimates from the user's fisica_8ball.py, not measured in the mobile game.
+    const val BALL_RESTITUTION=0.95f
+    const val CUSHION_RESTITUTION=0.75f
+    const val BALL_FRICTION=0.06f
+
     private data class Contact(val ball: Int,val impact: AimPoint,val distance: Float)
 
     /** Earliest circle collision along a finite segment, excluding overlaps. */
@@ -72,7 +79,7 @@ object MultiBallPredictor {
         val all=balls.filter { play.contains(it) }
         // Retain input ball indices: invalid off-table points are ignored in contact search.
         val validated=balls.map { if(play.contains(it)) it else AimPoint(-100000f,-100000f) }
-        val path=BounceGeometry.trace(cue,direction,play,rebounds)
+        val path=BounceGeometry.trace(cue,direction,play,rebounds,CUSHION_RESTITUTION)
         val miss=CollisionPreview(path,emptyList(),emptyList(),null,null,null,null,emptyList())
         if(path.size<2||all.isEmpty())return miss
         val found=closestContact(path,validated,radius)?:return miss
@@ -90,18 +97,30 @@ object MultiBallPredictor {
         val ny=(center.y-hit.impact.y)/(2f*radius)
         val normal=(vx*nx+vy*ny).coerceIn(0f,1f)
         if(normal<=0.0001f)return miss
-        // Equal-mass perfectly elastic collision, no friction or spin.
-        val afterX=vx-normal*nx
-        val afterY=vy-normal*ny
+        // Two equal-mass spheres: normal restitution and limited tangential impulse.
+        // Only translational velocities are tracked; spin still requires calibration.
+        val normalImpulse=normal*(1f+BALL_RESTITUTION)/2f
+        val tx=-ny
+        val ty=nx
+        val tangentInput=vx*tx+vy*ty
+        val tangentialImpulse=sign(tangentInput)*min(
+            kotlin.math.abs(tangentInput)/7f,
+            BALL_FRICTION*normalImpulse
+        )
+        val afterX=vx-normalImpulse*nx-tangentialImpulse*tx
+        val afterY=vy-normalImpulse*ny-tangentialImpulse*ty
+        val objectX=normalImpulse*nx+tangentialImpulse*tx
+        val objectY=normalImpulse*ny+tangentialImpulse*ty
         val cueAfter=if(hypot(afterX,afterY)>0.015f) {
             BounceGeometry.trace(
                 hit.impact,
                 AimPoint(hit.impact.x+afterX,hit.impact.y+afterY),
-                play,rebounds
+                play,rebounds,CUSHION_RESTITUTION
             )
         } else emptyList()
         val objectPath=BounceGeometry.trace(
-            center,AimPoint(center.x+nx,center.y+ny),play,rebounds
+            center,AimPoint(center.x+objectX,center.y+objectY),
+            play,rebounds,CUSHION_RESTITUTION
         )
         val second=closestContact(objectPath,validated,radius,hit.ball)
         val objectAfter=if(second==null)objectPath else
@@ -113,7 +132,7 @@ object MultiBallPredictor {
             val ny2=(nextCenter.y-nextImpact.y)/(2f*radius)
             BounceGeometry.trace(
                 nextCenter,AimPoint(nextCenter.x+nx2,nextCenter.y+ny2),
-                play,rebounds
+                play,rebounds,CUSHION_RESTITUTION
             )
         }
         return CollisionPreview(
