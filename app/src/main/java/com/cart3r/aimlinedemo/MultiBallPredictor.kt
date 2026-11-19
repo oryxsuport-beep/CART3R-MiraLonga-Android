@@ -12,7 +12,8 @@ data class CollisionPreview(
     val hitBall: Int?,
     val impact: AimPoint?,
     val secondaryBall: Int?,
-    val secondaryImpact: AimPoint?
+    val secondaryImpact: AimPoint?,
+    val secondaryAfter: List<AimPoint>
 )
 
 object MultiBallPredictor {
@@ -64,7 +65,7 @@ object MultiBallPredictor {
         cue:AimPoint, direction:AimPoint, balls:List<AimPoint>,
         radius:Float, table:TableBounds, rebounds:Int
     ):CollisionPreview {
-        val empty=CollisionPreview(emptyList(),emptyList(),emptyList(),null,null,null,null)
+        val empty=CollisionPreview(emptyList(),emptyList(),emptyList(),null,null,null,null,emptyList())
         if(radius<=0f||!table.valid||rebounds !in 0..3)return empty
         val play=TableBounds(table.left+radius,table.top+radius,table.right-radius,table.bottom-radius)
         if(!play.contains(cue))return empty
@@ -72,7 +73,7 @@ object MultiBallPredictor {
         // Retain input ball indices: invalid off-table points are ignored in contact search.
         val validated=balls.map { if(play.contains(it)) it else AimPoint(-100000f,-100000f) }
         val path=BounceGeometry.trace(cue,direction,play,rebounds)
-        val miss=CollisionPreview(path,emptyList(),emptyList(),null,null,null,null)
+        val miss=CollisionPreview(path,emptyList(),emptyList(),null,null,null,null,emptyList())
         if(path.size<2||all.isEmpty())return miss
         val found=closestContact(path,validated,radius)?:return miss
         val i=found.first
@@ -105,9 +106,19 @@ object MultiBallPredictor {
         val second=closestContact(objectPath,validated,radius,hit.ball)
         val objectAfter=if(second==null)objectPath else
             objectPath.take(second.first)+second.second.impact
+        val secondaryAfter=if(second==null) emptyList() else {
+            val nextCenter=balls[second.second.ball]
+            val nextImpact=second.second.impact
+            val nx2=(nextCenter.x-nextImpact.x)/(2f*radius)
+            val ny2=(nextCenter.y-nextImpact.y)/(2f*radius)
+            BounceGeometry.trace(
+                nextCenter,AimPoint(nextCenter.x+nx2,nextCenter.y+ny2),
+                play,rebounds
+            )
+        }
         return CollisionPreview(
             incoming,cueAfter,objectAfter,hit.ball,hit.impact,
-            second?.second?.ball,second?.second?.impact
+            second?.second?.ball,second?.second?.impact,secondaryAfter
         )
     }
 }
