@@ -19,6 +19,7 @@ class AimLineView(context: Context):View(context) {
     private val direction=PointF()
     private val targetBall=PointF()
     private val extras=mutableListOf<PointF>()
+    private var autoTargetInitialized=false
     private var table=TableBounds(0f,0f,1f,1f)
     private var initialized=false
     private var mode=Mode.LOCKED
@@ -81,13 +82,12 @@ class AimLineView(context: Context):View(context) {
             kotlin.math.hypot(it.center.x-targetBall.x,it.center.y-targetBall.y)
         } ?:return detected.size
         // Keep the previously selected target if no nearby detection is reliable.
-        if(targetEnabled&&kotlin.math.hypot(
+        if(!autoTargetInitialized || kotlin.math.hypot(
                 nearest.center.x-targetBall.x,nearest.center.y-targetBall.y
             )<=radius*4f) {
-            targetBall.set(nearest.center.x,nearest.center.y)
-        } else if(!targetEnabled) {
             targetEnabled=true
             targetBall.set(nearest.center.x,nearest.center.y)
+            autoTargetInitialized=true
         }
         extras.clear()
         val keepTarget=if(targetEnabled)nearest else null
