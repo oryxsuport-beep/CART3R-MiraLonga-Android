@@ -36,6 +36,7 @@ class AimLineView(context: Context):View(context) {
     }
     private val cueAfter=Paint(dotted).apply{color=Color.rgb(255,200,53)}
     private val objectAfter=Paint(dotted).apply{color=Color.rgb(43,223,238)}
+    private val secondaryAfter=Paint(dotted).apply{color=Color.rgb(224,96,252)}
     private val directPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color=Color.argb(150,255,38,62)
         strokeWidth=1.45f*dp
@@ -163,6 +164,7 @@ class AimLineView(context: Context):View(context) {
         path(canvas,predicted.incoming,dotted)
         path(canvas,predicted.cueAfter,cueAfter)
         path(canvas,predicted.ballAfter,objectAfter)
+        path(canvas,predicted.secondaryAfter,secondaryAfter)
         if(predicted.impact!=null){
             outline.color=Color.YELLOW
             canvas.drawCircle(predicted.impact.x,predicted.impact.y,radius,outline)
