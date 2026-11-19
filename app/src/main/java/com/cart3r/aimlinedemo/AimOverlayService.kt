@@ -29,6 +29,9 @@ class AimOverlayService: Service() {
     private lateinit var modeButton: TextView
     private lateinit var tableButton: TextView
     private lateinit var bounceButton: TextView
+    private lateinit var ballButton: TextView
+    private lateinit var radiusButton: TextView
+    private var ballEnabled = false
     private var mode = AimLineView.Mode.LOCKED
     private var rebounds = 0
     private var started = false
@@ -82,10 +85,16 @@ class AimOverlayService: Service() {
         modeButton=chip("✏ Ajustar mira")
         tableButton=chip("▣ Calibrar mesa")
         bounceButton=chip("↗ Rebotes: 0")
+        ballButton=chip("● Colocar bola")
+        radiusButton=chip("◯ Raio: 12")
+        val hideBall=chip("× Ocultar bola")
         controls.addView(handle)
         controls.addView(modeButton)
         controls.addView(tableButton)
         controls.addView(bounceButton)
+        controls.addView(ballButton)
+        controls.addView(radiusButton)
+        controls.addView(hideBall)
         panelParams=WindowManager.LayoutParams(
             dp(154),-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -97,6 +106,20 @@ class AimOverlayService: Service() {
         }
         tableButton.setOnClickListener {
             setMode(if(mode==AimLineView.Mode.TABLE) AimLineView.Mode.LOCKED else AimLineView.Mode.TABLE)
+        }
+        ballButton.setOnClickListener {
+            ballEnabled=true
+            line.setBallEnabled(true)
+            setMode(if(mode==AimLineView.Mode.BALL)AimLineView.Mode.LOCKED else AimLineView.Mode.BALL)
+        }
+        hideBall.setOnClickListener {
+            ballEnabled=false
+            line.setBallEnabled(false)
+            setMode(AimLineView.Mode.LOCKED)
+        }
+        radiusButton.setOnClickListener {
+            val size=line.cycleRadius()
+            radiusButton.text="◯ Raio: $size"
         }
         bounceButton.setOnClickListener {
             rebounds=(rebounds+1)%4
@@ -140,6 +163,8 @@ class AimOverlayService: Service() {
         wm.updateViewLayout(line,lineParams)
         modeButton.text=if(newMode==AimLineView.Mode.AIM) "✓ Travar mira" else "✏ Ajustar mira"
         tableButton.text=if(newMode==AimLineView.Mode.TABLE) "✓ Travar mesa" else "▣ Calibrar mesa"
+        ballButton.text=if(newMode==AimLineView.Mode.BALL) "✓ Travar bola"
+            else if(ballEnabled) "● Ajustar bola" else "● Colocar bola"
     }
     override fun onDestroy() {
         if(::controls.isInitialized&&controls.isAttachedToWindow)wm.removeView(controls)
