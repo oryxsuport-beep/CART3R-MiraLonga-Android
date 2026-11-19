@@ -1,5 +1,6 @@
 package com.cart3r.aimlinedemo
 
+import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -28,6 +29,16 @@ import kotlin.math.abs
  * and the visible marker circles.
  */
 class AimOverlayService:Service() {
+    companion object {
+        const val ACTION_START_AUTO="com.cart3r.aimlinedemo.START_AUTO"
+        const val ACTION_STOP_AUTO="com.cart3r.aimlinedemo.STOP_AUTO"
+        const val EXTRA_RESULT_CODE="media_projection_result_code"
+        const val EXTRA_RESULT_DATA="media_projection_result_data"
+    }
+    private var captureController:ScreenCaptureController?=null
+    private lateinit var detectionButton:TextView
+    private lateinit var detectionStatus:TextView
+    private lateinit var foregroundNote:Notification
     private val manager by lazy { getSystemService(WINDOW_SERVICE) as WindowManager }
     private lateinit var line:AimLineView
     private lateinit var panel:LinearLayout
@@ -67,18 +78,29 @@ class AimOverlayService:Service() {
             this,0,Intent(this,MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val note=Notification.Builder(this,"aim_overlay")
+        foregroundNote=Notification.Builder(this,"aim_overlay")
             .setSmallIcon(android.R.drawable.ic_menu_edit)
             .setContentTitle("CART3R Mira Longa V5")
             .setContentText("Mira ativa. Toques no jogo liberados.")
             .setContentIntent(pending).setOngoing(true).build()
         if(Build.VERSION.SDK_INT>=34)
-            startForeground(1001,note,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        else startForeground(1001,note)
+            startForeground(1001,foregroundNote,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        else startForeground(1001,foregroundNote)
     }
     override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int {
         if(!Settings.canDrawOverlays(this)){stopSelf();return START_NOT_STICKY}
         if(!started)startOverlay()
+        when(intent?.action){
+            ACTION_START_AUTO->{
+                val code=intent.getIntExtra(EXTRA_RESULT_CODE,Activity.RESULT_CANCELED)
+                @Suppress("DEPRECATION")
+                val data:Intent?=if(Build.VERSION.SDK_INT>=33)
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA,Intent::class.java)
+                    else intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                if(code==Activity.RESULT_OK&&data!=null)startAutomaticDetection(code,data)
+            }
+            ACTION_STOP_AUTO->stopAutomaticDetection()
+        }
         return START_NOT_STICKY
     }
     private fun button(text:String):TextView=TextView(this).apply{
@@ -136,10 +158,13 @@ class AimOverlayService:Service() {
         val remove=button("−  Remover última colisão")
         val hideTarget=button("◌  Mostrar/ocultar alvo")
         val lock=button("✓  Liberar toques")
+        detectionButton=button("◎  Detecção automática: INICIAR")
+        detectionStatus=button("Auto: desligada / ajuste manual")
         val stop=button("×  Encerrar mira")
         listOf(
             aimButton,tableButton,ballButton,extraButton,remove,
-            radiusButton,bounceButton,fanButton,banksButton,hideTarget,lock,stop
+            radiusButton,bounceButton,fanButton,banksButton,hideTarget,
+            detectionButton,detectionStatus,lock,stop
         ).forEach{options.addView(it)}
         panelBody.addView(options)
         panel.addView(panelBody,LinearLayout.LayoutParams(
@@ -197,6 +222,14 @@ class AimOverlayService:Service() {
             banksEnabled=!banksEnabled
             line.setBanksEnabled(banksEnabled)
             banksButton.text=if(banksEnabled)"⌁  Tabelas extras: ON" else "⌁  Tabelas extras: OFF"
+        }
+        detectionButton.setOnClickListener{
+            if(captureController!=null)stopAutomaticDetection()
+            else startActivity(Intent(this,MainActivity::class.java).apply{
+                action=MainActivity.ACTION_REQUEST_CAPTURE
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            })
         }
         lock.setOnClickListener{selectMode(AimLineView.Mode.LOCKED)}
         stop.setOnClickListener{stopSelf()}
@@ -256,6 +289,83 @@ class AimOverlayService:Service() {
         aimButton.text=if(mode==AimLineView.Mode.AIM)"✓  Concluir ajuste da mira" else "✏  Mover mira / branca"
         tableButton.text=if(mode==AimLineView.Mode.TABLE)"✓  Concluir bordas" else "▣  Calibrar 4 bordas"
         ballButton.text=if(mode==AimLineView.Mode.BALL)"✓  Concluir bola-alvo" else "●  Mover bola-alvo"
+    }
+
+    private fun startAutomaticDetection(code:Int,consent:Intent) {
+        stopAutomaticDetection()
+        // Android requires a mediaProjection foreground service BEFORE
+        // getMediaProjection and every createVirtualDisplay request.
+        if(Build.VERSION.SDK_INT>=34){
+            startForeground(1001,foregroundNote,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        }else if(Build.VERSION.SDK_INT>=29){
+            startForeground(1001,foregroundNote,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        }
+        if(mode!=AimLineView.Mode.LOCKED)selectMode(AimLineView.Mode.LOCKED)
+        lateinit var controller:ScreenCaptureController
+        controller=ScreenCaptureController(this,
+            {frame,frameW,frameH->
+                val overlayW=line.width
+                val overlayH=line.height
+                if(overlayW>20&&overlayH>20){
+                    val scaleX=frameW.toFloat()/overlayW
+                    val scaleY=frameH.toFloat()/overlayH
+                    val b=line.captureTable()
+                    val tableCapture=TableBounds(
+                        b.left*scaleX,b.top*scaleY,
+                        b.right*scaleX,b.bottom*scaleY
+                    )
+                    val detected=BallVision.detect(
+                        frame,frameW,frameH,tableCapture,
+                        line.captureRadius()*((scaleX+scaleY)/2f),16
+                    )
+                    line.post{
+                        if(captureController===controller){
+                            val local=detected.map{ball->
+                                VisionBall(
+                                    AimPoint(ball.center.x/scaleX,ball.center.y/scaleY),
+                                    ball.radius/((scaleX+scaleY)/2f),
+                                    ball.cueScore
+                                )
+                            }
+                            if(local.isNotEmpty())line.applyAutoDetected(local)
+                            detectionStatus.text="Auto: ${local.size} candidatas (beta)"
+                        }
+                    }
+                }
+            },
+            {
+                line.post{
+                    if(captureController===controller){
+                        captureController=null
+                        detectionButton.text="◎  Detecção automática: INICIAR"
+                        detectionStatus.text="Auto: captura encerrada"
+                    }
+                }
+            }
+        )
+        captureController=controller
+        try {
+            controller.start(code,consent)
+            detectionButton.text="■  Encerrar detecção automática"
+            detectionStatus.text="Auto: buscando bolas na mesa..."
+        }catch(e:Exception){
+            captureController=null
+            detectionButton.text="◎  Detecção automática: INICIAR"
+            detectionStatus.text="Auto: falhou. Reautorize a captura."
+            android.util.Log.w("CART3R","User-consented capture could not start",e)
+        }
+    }
+    private fun stopAutomaticDetection(){
+        val current=captureController
+        captureController=null
+        current?.stop()
+        if(::detectionButton.isInitialized){
+            detectionButton.text="◎  Detecção automática: INICIAR"
+            detectionStatus.text="Auto: desligada / ajuste manual"
+        }
     }
 
     private fun removeMarkers() {
@@ -331,6 +441,7 @@ class AimOverlayService:Service() {
     }
 
     override fun onDestroy(){
+        stopAutomaticDetection()
         removeMarkers()
         if(::panel.isInitialized&&panel.isAttachedToWindow)manager.removeView(panel)
         if(::line.isInitialized&&line.isAttachedToWindow)manager.removeView(line)
