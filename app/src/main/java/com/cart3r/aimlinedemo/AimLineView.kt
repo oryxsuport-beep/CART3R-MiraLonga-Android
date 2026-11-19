@@ -18,6 +18,8 @@ class AimLineView(context: Context) : View(context) {
     private val target = PointF()
     private val ball = PointF()
     private var ballEnabled = false
+    private var fanEnabled = true
+    private var banksEnabled = true
     private var bounds = TableBounds(0f,0f,1f,1f)
     private var initialized = false
     private var mode = Mode.LOCKED
@@ -40,6 +42,8 @@ class AimLineView(context: Context) : View(context) {
     fun setMode(newMode: Mode) { mode=newMode; activeHandle=-1; invalidate() }
     fun setRebounds(value: Int) { rebounds=value.coerceIn(0,3); invalidate() }
     fun setBallEnabled(value:Boolean){ballEnabled=value;invalidate()}
+    fun setFanEnabled(value:Boolean){fanEnabled=value;invalidate()}
+    fun setBanksEnabled(value:Boolean){banksEnabled=value;invalidate()}
     fun cycleRadius():Int {
         val sizes=floatArrayOf(9f,12f,15f,18f,21f)
         val next=sizes.indexOfFirst{it>ballRadius/density+0.1f}
@@ -75,6 +79,28 @@ class AimLineView(context: Context) : View(context) {
         fun drawPath(points:List<AimPoint>,paint:Paint) {
             for(i in 1 until points.size)
                 canvas.drawLine(points[i-1].x,points[i-1].y,points[i].x,points[i].y,paint)
+        }
+        // Red six-pocket trickshot fan inspired by the user-provided video.
+        // Trajectories originate at the manually positioned object ball.
+        if(ballEnabled && fanEnabled) {
+            val directPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color=Color.argb(185,250,33,57)
+                strokeWidth=1.8f*density
+                style=Paint.Style.STROKE
+                strokeCap=Paint.Cap.ROUND
+            }
+            val bankPaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color=Color.argb(130,255,66,63)
+                strokeWidth=1.35f*density
+                style=Paint.Style.STROKE
+                strokeCap=Paint.Cap.ROUND
+            }
+            val routes=PocketPlanner.fan(AimPoint(ball.x,ball.y),bounds,banksEnabled)
+            for(route in routes)drawPath(route.points,if(route.bank==null)directPaint else bankPaint)
+            dot.color=Color.rgb(255,64,85)
+            for(p in PocketPlanner.pockets(bounds)){
+                canvas.drawCircle(p.x,p.y,3.4f*density,dot)
+            }
         }
         drawPath(prediction.cueIncoming,stroke)
         val cuePaint=Paint(stroke).apply {

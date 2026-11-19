@@ -1,31 +1,25 @@
-# CART3R Mira Longa V3 (Android)
+# CART3R Mira Longa V4
 
-Aplicativo Android independente em Kotlin para prever **trajetórias aproximadas de bilhar** sem modificar nenhum jogo.
+Aplicativo Android auxiliar Kotlin. Inspirado no vídeo de exemplo fornecido pelo usuário: **linhas vermelhas da bola-alvo até as seis caçapas**, mais guias geométricas para uma tabela. Não modifica o aplicativo do 8 Ball Pool, não lê o jogo e não faz bypass de anticheat.
 
-## Funções
-- Mira longa ajustável manualmente
-- Posicionamento manual de bola branca e bola-alvo
-- Simulação geométrica da colisão de duas bolas de mesma massa
-- Caminhos pós-colisão em amarelo (branca) e azul (bola-alvo)
-- Calibração das quatro bordas da mesa
-- Até 3 rebotes ideais e 5 tamanhos de raio da bola
-- Botões para travar a sobreposição e liberar toques
+## Funcionalidades
+- Guias de seis caçapas (vermelho forte);
+- Até seis rotas geométricas de uma tabela (vermelho transparente);
+- Direção de mira longa e previsão idealizada entre duas bolas;
+- Calibração manual da mesa, taco, bola-alvo e raio da bola;
+- Controles para ligar/desligar as linhas e os rebotes;
+- Sobreposição travável que deixa os toques passarem ao app abaixo.
 
-## Como usar
-1. Execute o build em Actions > Android - Compilar APK. Baixe o artifact CART3R-MiraLonga-v3-debug.
-2. Extraia o ZIP e instale app-debug.apk.
-3. Abra o aplicativo e autorize a permissão "Aparecer sobre outros apps".
-4. Inicie a mira. Calibre as bordas da mesa no botão "Calibrar mesa".
-5. Em "Ajustar mira", arraste os 2 marcadores para a branca e a direção da tacada.
-6. Em "Colocar bola", toque ou arraste até a posição da bola-alvo.
-7. Ajuste o tamanho em "Raio" até combinar com a bola exibida.
-8. Selecione 0 a 3 rebotes, conforme necessário.
-9. Trave os marcadores e retorne ao jogo; a linha não captura nem controla o jogo.
+## Como usar no Android
+1. Na aba GitHub Actions, abra o último build, baixe o artefato `CART3R-MiraLonga-v4-debug` e extraia `app-debug.apk`.
+2. Instale o arquivo no Android. Este build usa ID de pacote próprio da V4, podendo coexistir com V3.
+3. Abra o app e permita **Aparecer sobre outros aplicativos**.
+4. Toque em **Iniciar mira longa**; em **Calibrar mesa**, ajuste as bordas.
+5. Em **Colocar bola**, arraste o ponto azul até a bola que quer mirar.
+6. Em **Ajustar mira**, coloque o ponto branco na posição da branca e o outro ponto na direção da tacada.
+7. Trave os ajustes. Ligue ou desligue **Seis caçapas**, **Tabelas extras**, e **Rebotes**.
 
-## Modelo e limites
-A aproximação usa colisão elástica de duas massas iguais sem rotação, interseção raio-círculo e reflexão ideal nas tabelas. Não considera força, atrito real, efeito/spin, caçapas, comportamento da rede, colisões com múltiplas bolas nem os parâmetros secretos do motor do 8 Ball Pool. Não há garantia de precisão no jogo real.
+## Limitações
+As linhas da caçapa **não indicam acerto automático**; são referências geométricas. Os rebotes assumem ângulo de incidência igual ao ângulo de reflexão. Colisões são modeladas como duas bolas de mesma massa e colisão elástica ideal. Não há detecção automática de bolas, análise do vídeo em tempo real, cálculo de pockets com tamanho real, spin, efeito do taco, atrito e calibração da física do servidor do jogo. Não é equivalente ao mod exibido no vídeo e não promete tacadas perfeitas.
 
-Nenhum APK do jogo original, bypass, injeção de código, acesso à memória ou captura de tela está incluído. Sobreposições podem violar regras de jogos online; use somente onde permitido.
-
-## Desenvolvimento
-O GitHub Actions executa testes JUnit e compila o APK debug no branch main.
+Ao testar sobreposições em jogos, verifique as regras do serviço; seu uso pode resultar em bloqueio.

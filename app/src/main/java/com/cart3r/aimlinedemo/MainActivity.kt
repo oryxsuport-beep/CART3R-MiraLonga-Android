@@ -42,8 +42,8 @@ class MainActivity : Activity() {
             }
             layout.addView(b, LinearLayout.LayoutParams(-1,dp(55)).apply { bottomMargin = dp(12) })
         }
-        layout.addView(label("CART3R / MIRA LONGA V3", 21f, Color.rgb(255,64,99), true))
-        layout.addView(label("Trajetórias manuais + colisões ideais. Sem root.", 13f, Color.LTGRAY))
+        layout.addView(label("CART3R / MIRA LONGA V4", 21f, Color.rgb(255,64,99), true))
+        layout.addView(label("Linhas vermelhas até 6 caçapas + rebotes ideais. Sem root.", 13f, Color.LTGRAY))
         status = label("Verificando permissão...", 13f, Color.LTGRAY)
         layout.addView(status)
         button("1. Permitir aparecer sobre outros apps") {
@@ -64,11 +64,11 @@ class MainActivity : Activity() {
         }
         layout.addView(label(
             "Ajustar mira: arraste os 2 pontos. Calibrar mesa: ajuste as 4 bordas. " +
-            "Rebotes: 0 a 3. Coloque a bola-alvo, ajuste o raio e trave a mira.",
+            "Rebotes: 0 a 3. Ajuste a bola-alvo, as caçapas e a mesa; ative as linhas em vermelho.",
             12f, Color.rgb(170,163,170)
         ))
         layout.addView(label(
-            "Modelo idealizado de 2 bolas. Não reconhece a tela nem garante tacadas.",
+            "Visual baseado no vídeo. Sem reconhecimento automático nem física exata do jogo.",
             12f, Color.rgb(170,163,170)
         ))
         setContentView(layout)

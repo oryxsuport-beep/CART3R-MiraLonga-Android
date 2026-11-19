@@ -6,11 +6,11 @@ android {
     namespace = "com.cart3r.aimlinedemo"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.cart3r.aimlinedemo"
+        applicationId = "com.cart3r.aimlinedemo.v4"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "3.0"
+        versionCode = 4
+        versionName = "4.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

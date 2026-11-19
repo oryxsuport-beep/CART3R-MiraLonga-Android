@@ -31,7 +31,11 @@ class AimOverlayService: Service() {
     private lateinit var bounceButton: TextView
     private lateinit var ballButton: TextView
     private lateinit var radiusButton: TextView
-    private var ballEnabled = false
+    private lateinit var fanButton: TextView
+    private lateinit var banksButton: TextView
+    private var fanEnabled = true
+    private var banksEnabled = true
+    private var ballEnabled = true
     private var mode = AimLineView.Mode.LOCKED
     private var rebounds = 0
     private var started = false
@@ -65,6 +69,7 @@ class AimOverlayService: Service() {
     }
     private fun showOverlay() {
         line=AimLineView(this)
+        line.setBallEnabled(true)
         lineParams=WindowManager.LayoutParams(
             -1,-1,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -88,6 +93,8 @@ class AimOverlayService: Service() {
         ballButton=chip("● Colocar bola")
         radiusButton=chip("◯ Raio: 12")
         val hideBall=chip("× Ocultar bola")
+        fanButton=chip("✦ Seis caçapas: ON")
+        banksButton=chip("⌁ Tabelas extras: ON")
         controls.addView(handle)
         controls.addView(modeButton)
         controls.addView(tableButton)
@@ -95,6 +102,8 @@ class AimOverlayService: Service() {
         controls.addView(ballButton)
         controls.addView(radiusButton)
         controls.addView(hideBall)
+        controls.addView(fanButton)
+        controls.addView(banksButton)
         panelParams=WindowManager.LayoutParams(
             dp(154),-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -120,6 +129,16 @@ class AimOverlayService: Service() {
         radiusButton.setOnClickListener {
             val size=line.cycleRadius()
             radiusButton.text="◯ Raio: $size"
+        }
+        fanButton.setOnClickListener {
+            fanEnabled=!fanEnabled
+            line.setFanEnabled(fanEnabled)
+            fanButton.text=if(fanEnabled) "✦ Seis caçapas: ON" else "✦ Seis caçapas: OFF"
+        }
+        banksButton.setOnClickListener {
+            banksEnabled=!banksEnabled
+            line.setBanksEnabled(banksEnabled)
+            banksButton.text=if(banksEnabled) "⌁ Tabelas extras: ON" else "⌁ Tabelas extras: OFF"
         }
         bounceButton.setOnClickListener {
             rebounds=(rebounds+1)%4
